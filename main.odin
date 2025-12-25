@@ -1,6 +1,104 @@
 package main
 
+import "core:strings"
 import "core:fmt"
+import "core:unicode/utf8"
+
+
+
+parse_sentence :: proc(text: string){
+
+	buffer_katakana := make([dynamic]rune,context.temp_allocator)
+	buffer_hiragana := make([dynamic]rune,context.temp_allocator)
+	buffer_kanji := make([dynamic]rune,context.temp_allocator)
+
+	parsing_katakana := false
+	parsing_hiragana := false
+
+	words := make([dynamic]string,context.temp_allocator)
+	buffer_word:= ""
+
+	parsing_kana:= false
+	parsing_kanji:= false
+
+	for r in text {
+		if is_kana(r) {
+			parsing_kana = true
+			if is_katakana(r){
+				parsing_katakana = true
+			}else{
+				parsing_katakana = false
+			}
+
+			if is_hiragana(r){
+				parsing_hiragana = true
+			}else{
+				parsing_hiragana = false
+			}
+
+		} else{
+			parsing_kana = false
+		}
+
+		if is_kanji(r){
+			parsing_kanji = true
+		} else{
+			parsing_kanji = false
+		}
+
+
+		if parsing_kana {
+			if parsing_katakana{
+				append(&buffer_katakana,r)
+			}
+			if parsing_hiragana{
+				append(&buffer_hiragana,r)
+			}
+		}
+
+		if parsing_kanji {
+			append(&buffer_kanji,r)
+		}
+
+
+		if len(buffer_katakana) > 3{
+			buffer_word = utf8.runes_to_string(buffer_katakana[:])
+			append(&words,buffer_word)
+			clear(&buffer_katakana)
+			parsing_kana = false
+		}
+		if len(buffer_hiragana) > 3{
+			buffer_word = utf8.runes_to_string(buffer_katakana[:])
+			append(&words,buffer_word)
+			clear(&buffer_katakana)
+			parsing_kana = false
+		}
+
+		switch r {
+			case 'の':
+				buffer_word = utf8.runes_to_string(buffer_kanji[:])
+				append(&words,buffer_word)
+				clear(&buffer_kanji)
+
+				buffer_word = utf8.runes_to_string(buffer_katakana[:])
+				append(&words,buffer_word)
+				clear(&buffer_katakana)
+
+				buffer_word = utf8.runes_to_string(buffer_hiragana[:])
+				append(&words,buffer_word)
+				clear(&buffer_hiragana)
+				parsing_kanji = false
+			case ' ':
+				clear(&buffer_hiragana)
+				clear(&buffer_katakana)
+		}
+
+
+	}
+
+	fmt.printfln("words: %s",words)
+}
+
 
 is_hiragana :: proc(r: rune) -> bool {
 	return r >= 0x3040 && r <= 0x309F
@@ -26,15 +124,7 @@ is_kanji :: proc(r: rune) -> bool {
 }
 
 main :: proc() {
-	text := "こんにちは世界！カナ andrey"
+	text := "上野動物園のパンダ　見ることができるのは「あと1か月」東京の上野動物園の双子のパンダ「シャオシャオ」と「レイレイ」は、1月に中国に帰ります。"
+	parse_sentence(text)
 
-	for r in text {
-		if is_kana(r) {
-			fmt.printf("%r is kana (hiragana: %v, katakana: %v)\n", r, is_hiragana(r), is_katakana(r))
-		} else if is_kanji(r) {
-			fmt.printf("%r is kanji\n", r)
-		} else {
-			fmt.printf("%r is other (e.g., punctuation or non-Japanese)\n", r)
-		}
-	}
 }
