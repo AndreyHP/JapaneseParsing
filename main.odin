@@ -1,10 +1,14 @@
 package main
 
-import "core:strings"
 import "core:fmt"
 import "core:unicode/utf8"
 
-
+append_word :: proc(buffer:^[dynamic]rune, words:^[dynamic]string){
+	buffer_word:= ""
+	buffer_word = utf8.runes_to_string(buffer[:])
+	append(words,buffer_word)
+	clear(buffer)
+}
 
 parse_sentence :: proc(text: string){
 
@@ -14,12 +18,10 @@ parse_sentence :: proc(text: string){
 
 	parsing_katakana := false
 	parsing_hiragana := false
-
-	words := make([dynamic]string,context.temp_allocator)
-	buffer_word:= ""
-
 	parsing_kana:= false
 	parsing_kanji:= false
+
+	words := make([dynamic]string,context.temp_allocator)
 
 	for r in text {
 		if is_kana(r) {
@@ -62,35 +64,47 @@ parse_sentence :: proc(text: string){
 
 
 		if len(buffer_katakana) > 3{
-			buffer_word = utf8.runes_to_string(buffer_katakana[:])
-			append(&words,buffer_word)
-			clear(&buffer_katakana)
+			append_word(&buffer_katakana,&words)
 			parsing_kana = false
 		}
 		if len(buffer_hiragana) > 3{
-			buffer_word = utf8.runes_to_string(buffer_katakana[:])
-			append(&words,buffer_word)
-			clear(&buffer_katakana)
+			append_word(&buffer_hiragana,&words)
 			parsing_kana = false
 		}
 
 		switch r {
 			case 'の':
-				buffer_word = utf8.runes_to_string(buffer_kanji[:])
-				append(&words,buffer_word)
-				clear(&buffer_kanji)
-
-				buffer_word = utf8.runes_to_string(buffer_katakana[:])
-				append(&words,buffer_word)
-				clear(&buffer_katakana)
-
-				buffer_word = utf8.runes_to_string(buffer_hiragana[:])
-				append(&words,buffer_word)
-				clear(&buffer_hiragana)
-				parsing_kanji = false
-			case ' ':
-				clear(&buffer_hiragana)
-				clear(&buffer_katakana)
+				if parsing_kanji {
+					fmt.printfln("Parsing Kanji")
+					append_word(&buffer_kanji,&words)
+					parsing_kanji = false
+				}
+				if parsing_hiragana {
+					fmt.printfln("Parsing Hiragana")
+					append_word(&buffer_hiragana,&words)
+					parsing_hiragana = false
+				}
+				if parsing_katakana {
+					fmt.printfln("Parsing Katakana")
+					append_word(&buffer_katakana,&words)
+					parsing_katakana = false
+				}
+			case '　':
+				if parsing_kanji {
+					fmt.printfln("Parsing Kanji")
+					append_word(&buffer_kanji,&words)
+					parsing_kanji = false
+				}
+				if parsing_hiragana {
+					fmt.printfln("Parsing Hiragana")
+					append_word(&buffer_hiragana,&words)
+					parsing_hiragana = false
+				}
+				if parsing_katakana {
+					fmt.printfln("Parsing Katakana")
+					append_word(&buffer_katakana,&words)
+					parsing_katakana = false
+				}
 		}
 
 
